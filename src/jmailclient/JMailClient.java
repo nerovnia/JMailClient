@@ -5,122 +5,112 @@
  */
 package jmailclient;
 
-import java.util.Properties;
-import javax.mail.Folder;
-
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Store;
-import javax.mail.Transport;
-import javax.mail.URLName;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.UnknownHostException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author volodymyr
  */
 public class JMailClient {
-
+    // For receive mail
     static private String receiveProtocol = "imaps";
     static private String imapHost = "imap.gmail.com";
+    static private int imapPort = 993;
     static private String file = "INBOX";
+//    static private final String username = "license.volodymyr.nerovnia@gmail.com";
     static private final String username = "license.volodymyr.nerovnia@gmail.com";
     static private final String password = "KNGE2PDN";
+    
+    // For send mail
+    static private String mail_smtp_auth = "true";
+    static private String mail_smtp_starttls_enable = "true";
+    static private String mail_smtp_host = "smtp.gmail.com";
+    static private String mail_smtp_port = "587";
+    
+    static private String mailFrom = "license.volodymyr.nerovnia@gmail.com";
+    static private String mailRecipients = "license.volodymyr.nerovnia@gmail.com";
+    
+    static private String IP = "";
 
+    
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
-        receiveMail(receiveProtocol, imapHost, file, username, password);
-    }
-
-    static public void sendMail(String username, String password) {
-        //       final String username = "license.volodymyr.nerovnia@gmail.com";
-        //       final String password = "KNGE2PDN";
-
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.port", "587");
-
-        Session session = Session.getInstance(props,
-                new javax.mail.Authenticator() {
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(username, password);
-            }
-        });
-        try {
-
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress("license.volodymyr.nerovnia@gmail.com"));
-            message.setRecipients(Message.RecipientType.TO,
-                    InternetAddress.parse("license.volodymyr.nerovnia@gmail.com"));
-            message.setSubject("Testing Subject");
-            message.setText("Dear Mail Crawler,"
-                    + "\n\n No spam to my email, please!");
-
-            Transport.send(message);
-
-            System.out.println("Done");
-
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
+    public static void main(String[] args) throws UnknownHostException {
+        //MailService ms = new MailService();
+        //ms.receiveMail(receiveProtocol, imapHost, file, username, password);
+        if(!checkIP()) {
+            sendIPToEmail();
         }
     }
 
-    static public void receiveMail(String protocol, String host, String file, String username, String password) {
+    private static String getIP() {
+        String str = null;
         try {
-            Session session;
-            Store store;
-            Folder folder;
-
-            URLName url = new URLName(protocol, host, 993, file, username, password);
-
-            Properties props = null;
-            try {
-                props = System.getProperties();
-            } catch (SecurityException sex) {
-                props = new Properties();
-            }
-            session = Session.getInstance(props, null);
-            store = session.getStore(url);
-            store.connect();
-            folder = store.getFolder(url);
-
-            folder.open(Folder.READ_WRITE);
-
-            
-            
-            
-            
-            
-            
-            int messageCount = 0;
-            try {
-                messageCount = folder.getMessageCount();
-            } catch (MessagingException me) {
-                me.printStackTrace();
-            }
-            System.out.println("messageCount:" + messageCount);
-
-            
-            
-            
-            
-            
-            
-            folder.close(false);
-            store.close();
-            store = null;
-            session = null;
-
-        } catch (Exception e) {
+            URL connection = new URL("http://checkip.amazonaws.com/");
+            URLConnection con = connection.openConnection();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            str = reader.readLine();
+        } catch (IOException e) {
             System.err.println(e.getStackTrace());
         }
+        return str;
     }
 
+    private static boolean checkIP() {
+        if(!IP.equals(getIP())) {
+            IP = getIP();
+            return false;
+        } else {
+            return true;
+        }
+    }
+    
+    private static String getHostName() {
+        String hostName = "";
+        try {
+            hostName =  InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException ex) {
+            Logger.getLogger(JMailClient.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return hostName;
+    }
+    
+    private static void sendIPToEmail(){
+            String messSubject = "--==  " + getHostName() +"  ==--";
+            String messText = IP;
+            MailService ms = new MailService(username, password, mail_smtp_auth, mail_smtp_starttls_enable, mail_smtp_host, mail_smtp_port);
+            ms.sendMail(mailFrom, mailRecipients, messSubject, messText);
+        
+    }
 }
+/*
+
+// It is good to Use Tag Library to display dynamic content 
+	MailService mailService = new MailService();
+	mailService.login("imap.gmail.com", "your gmail email here",
+			"your gmail password here");
+	int messageCount = mailService.getMessageCount();
+
+	//just for tutorial purpose
+	if (messageCount > 5)
+		messageCount = 5;
+	Message[] messages = mailService.getMessages();
+	for (int i = 0; i < messageCount; i++) {
+		String subject = "";
+		if (messages[i].getSubject() != null)
+			subject = messages[i].getSubject();
+		Address[] fromAddress = messages[i].getFrom();
+out.print(fromAddress[0].toString());
+messages[i].getReceivedDate()
+
+ */
